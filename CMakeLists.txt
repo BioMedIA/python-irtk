@@ -91,7 +91,7 @@ endif(CYTHON_ERR)
 set(CPP_SRCS ${CPP_SRCS} ${CMAKE_BINARY_DIR}/tmp/_irtk.cpp)
   
 add_library( "_irtk" MODULE ${CPP_SRCS})
-target_link_libraries( "_irtk" ${IRTK_LIBRARIES} ${PYTHON_LIBRARY} ${PNG_LIBRARY} znz)
+target_link_libraries( "_irtk" ${IRTK_LIBRARIES} ${PYTHON_LIBRARY} ${IRTK_LIBRARIES} ${PNG_LIBRARY} znz)
 set_target_properties("_irtk" PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/irtk)
 
 # copy all python files
