@@ -1,0 +1,7 @@
+recursive-include irtk *.py *.so *.ubu
+prune build
+prune doc
+prune src
+prune include
+prune scripts
+exclude generate_templates.py
