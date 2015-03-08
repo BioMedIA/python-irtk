@@ -5,7 +5,7 @@
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
-BUILDDIR      = build
+BUILDDIR      = ../../python-irtk-doc
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
@@ -51,6 +51,12 @@ clean:
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	mv $(BUILDDIR)/html/_images $(BUILDDIR)/html/images
+	mv $(BUILDDIR)/html/_sources $(BUILDDIR)/html/sources
+	mv $(BUILDDIR)/html/_static $(BUILDDIR)/html/static
+	perl -i -pe 's/_images/images/g' $(BUILDDIR)/html/*.html
+	perl -i -pe 's/_sources/sources/g' $(BUILDDIR)/html/*.html
+	perl -i -pe 's/_static/static/g' $(BUILDDIR)/html/*.html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
