@@ -1,8 +1,0 @@
-build/
-
-# Python
-*.py[cod]
-
-# Emacs
-*~
-.\#*

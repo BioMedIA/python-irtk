@@ -1,0 +1,626 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>irtk Python documentation &mdash; irtk 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="irtk 1.0 documentation" href="#" />
+    <link rel="next" title="Why Python?" href="why.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="why.html" title="Why Python?"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">irtk 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="irtk-python-documentation">
+<h1>irtk Python documentation<a class="headerlink" href="#irtk-python-documentation" title="Permalink to this headline">¶</a></h1>
+<p>The aim of this module is to provide a simple and pythonic interface to IRTK
+(<a class="reference external" href="http://www.doc.ic.ac.uk/~dr/software/">http://www.doc.ic.ac.uk/~dr/software/</a>) by considering a medical image as a
+subclass of a numpy.ndarray containing information headers (dimension,
+orientation, origin and pixel size). By overloading <tt class="docutils literal"><span class="pre">__getitem__</span></tt>, slicing the
+array automatically updates the dimension and origin information. Images are
+manipulated in C++ as 4D images (IRTK behaviour), but flat dimensions are
+removed from Python thanks to an automated call to <tt class="docutils literal"><span class="pre">numpy.squeeze</span></tt>.</p>
+<p>Indices are ordered TZYX, eg <tt class="docutils literal"><span class="pre">img[t,z,y,x]</span></tt>, which corresponds to the raw
+pixel array of IRTK but differs from the <tt class="docutils literal"><span class="pre">img(x,y,z,t)</span></tt> C++
+interface. Nonetheless, the order in the information header still correspond to
+the C++ order, that is to say <tt class="docutils literal"><span class="pre">img.header['dim'][0]</span></tt> corresponds to
+<tt class="docutils literal"><span class="pre">img.GetX()</span></tt> and is equal to <tt class="docutils literal"><span class="pre">img.shape[-1]</span></tt>,  <tt class="docutils literal"><span class="pre">img.header['pixelSize'][0]</span></tt> corresponds to
+<tt class="docutils literal"><span class="pre">img.GetXSize()</span></tt>, <tt class="docutils literal"><span class="pre">img.header['orientation'][0]</span></tt> corresponds to <tt class="docutils literal"><span class="pre">xaxis</span></tt>,
+and finally <tt class="docutils literal"><span class="pre">img.header['origin'][0]</span></tt> correspond to the X origin.</p>
+<p>Below is a basic example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># load the module</span>
+<span class="kn">import</span> <span class="nn">irtk</span>
+
+<span class="c"># read an image</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">irtk</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="s">&quot;5066_4.nii&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s">&quot;float32&quot;</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">img</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">img</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">img</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="c"># methods inherited from numpy.ndarray</span>
+
+<span class="c"># write a PNG thumbnail after saturation, displaying a segmentation by thresholding</span>
+<span class="n">irtk</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">saturate</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">0.99</span><span class="p">),</span> <span class="n">img</span> <span class="o">&gt;</span> <span class="mi">2000</span><span class="p">,</span> <span class="n">opacity</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&quot;thumbnail.png&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/thumbnail.png"><img alt="_images/thumbnail.png" class="align-center" src="_images/thumbnail.png" style="height: 200pt;" /></a>
+<p>Below is a more complex example where we read several scans, register them all
+to the first one and compute an average volume:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">irtk</span>
+
+<span class="n">filenames</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+<span class="n">img1</span> <span class="o">=</span> <span class="n">irtk</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">filenames</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s">&#39;float32&#39;</span><span class="p">)</span>
+<span class="n">img1</span> <span class="o">=</span> <span class="n">img1</span><span class="o">.</span><span class="n">rescale</span><span class="p">()</span>
+<span class="n">weights</span> <span class="o">=</span> <span class="p">(</span><span class="n">img1</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">&#39;int&#39;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+    <span class="n">img2</span> <span class="o">=</span> <span class="n">irtk</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span> <span class="n">f</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s">&#39;float32&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rescale</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">img2</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">img1</span><span class="p">)</span> <span class="c"># rigid registration</span>
+    <span class="n">img2</span> <span class="o">=</span> <span class="n">img2</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">target</span><span class="o">=</span><span class="n">img1</span><span class="p">)</span> <span class="c"># linear interpolation by default</span>
+    <span class="n">img1</span> <span class="o">+=</span> <span class="n">img2</span>
+    <span class="n">weights</span> <span class="o">+=</span> <span class="n">img2</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+<span class="n">img1</span> <span class="o">/=</span> <span class="n">weights</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">&#39;float32&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.000001</span> <span class="c"># avoid division by zero</span>
+
+<span class="c"># write image to disk</span>
+<span class="n">irtk</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span> <span class="s">&quot;average.nii&quot;</span><span class="p">,</span> <span class="n">img1</span><span class="p">)</span>
+
+<span class="c"># save thumbnail</span>
+<span class="n">irtk</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span> <span class="n">img1</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s">&quot;average.png&quot;</span> <span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/average.png"><img alt="_images/average.png" class="align-center" src="_images/average.png" style="height: 200pt;" /></a>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="why.html">Why Python?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="why.html#why-another-python-libraries-for-medical-imaging">Why another Python libraries for medical imaging?</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="module-reference">
+<h1>Module reference<a class="headerlink" href="#module-reference" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul class="simple">
+</ul>
+</div>
+<span class="target" id="module-irtk"></span><p>This module is a wrapper around IRTK (<a class="reference external" href="http://www.doc.ic.ac.uk/~dr/software/">http://www.doc.ic.ac.uk/~dr/software/</a>)
+written using Cython and a script to simulate templated code.</p>
+<dl class="class">
+<dt id="irtk.Image">
+<em class="property">class </em><tt class="descclassname">irtk.</tt><tt class="descname">Image</tt><a class="headerlink" href="#irtk.Image" title="Permalink to this definition">¶</a></dt>
+<dd><p>A subclass of numpy.ndarray holding the information from the NIFTI headers.</p>
+<dl class="method">
+<dt id="irtk.Image.ImageToWorld">
+<tt class="descname">ImageToWorld</tt><big>(</big><em>pt</em><big>)</big><a class="headerlink" href="#irtk.Image.ImageToWorld" title="Permalink to this definition">¶</a></dt>
+<dd><p>BEWARE: images are indexed as img[t,z,y,x],
+so for instance:</p>
+<p class="rubric">Examples</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">tx</span><span class="p">,</span><span class="n">ty</span><span class="p">,</span><span class="n">tz</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">ImageToWorld</span><span class="p">(</span> <span class="p">[(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">]</span> <span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.WorldToImage">
+<tt class="descname">WorldToImage</tt><big>(</big><em>pt</em><big>)</big><a class="headerlink" href="#irtk.Image.WorldToImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns integers</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="irtk.Image.__new__">
+<em class="property">static </em><tt class="descname">__new__</tt><big>(</big><em>img=None</em>, <em>header=None</em>, <em>copy=True</em>, <em>squeeze=True</em>, <em>force_neurological=False</em><big>)</big><a class="headerlink" href="#irtk.Image.__new__" title="Permalink to this definition">¶</a></dt>
+<dd><p>constructor</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.anisoDiff">
+<tt class="descname">anisoDiff</tt><big>(</big><em>iterations=5</em><big>)</big><a class="headerlink" href="#irtk.Image.anisoDiff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Anisotropic diffusion</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.as3D">
+<tt class="descname">as3D</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.Image.as3D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Force 3D shape</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.as4D">
+<tt class="descname">as4D</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.Image.as4D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Force 4D shape</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.bbox">
+<tt class="descname">bbox</tt><big>(</big><em>crop=False</em>, <em>world=False</em>, <em>lcc=False</em><big>)</big><a class="headerlink" href="#irtk.Image.bbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bounding box.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.copy">
+<tt class="descname">copy</tt><big>(</big><em>dtype=None</em><big>)</big><a class="headerlink" href="#irtk.Image.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a deep copy of the object.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.dice">
+<tt class="descname">dice</tt><big>(</big><em>mask2</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#irtk.Image.dice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dice and overlap metrics</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.gaussianBlurring">
+<tt class="descname">gaussianBlurring</tt><big>(</big><em>sigma=1.0</em><big>)</big><a class="headerlink" href="#irtk.Image.gaussianBlurring" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gaussian blurring</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.gdt">
+<tt class="descname">gdt</tt><big>(</big><em>mask</em>, <em>l=10.0</em><big>)</big><a class="headerlink" href="#irtk.Image.gdt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gaussian blurring</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.get_data">
+<tt class="descname">get_data</tt><big>(</big><em>dtype=None</em>, <em>purpose='python'</em><big>)</big><a class="headerlink" href="#irtk.Image.get_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return pixel data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.get_header">
+<tt class="descname">get_header</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.Image.get_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Safe copy of the headers.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.mask">
+<tt class="descname">mask</tt><big>(</big><em>mask</em>, <em>threshold=0</em><big>)</big><a class="headerlink" href="#irtk.Image.mask" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mask image (after transforming the mask if necessary).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.nb_pixels">
+<tt class="descname">nb_pixels</tt><big>(</big><em>world=False</em><big>)</big><a class="headerlink" href="#irtk.Image.nb_pixels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return number of pixels.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.neurological">
+<tt class="descname">neurological</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.Image.neurological" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if neurological order.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.order">
+<tt class="descname">order</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.Image.order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return either &#8220;radiological&#8221; or &#8220;neurological&#8221;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.orientation">
+<tt class="descname">orientation</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.Image.orientation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return orientation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.origin">
+<tt class="descname">origin</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.Image.origin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return origin as a 3D point.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.radiological">
+<tt class="descname">radiological</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.Image.radiological" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if radiological order.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.register">
+<tt class="descname">register</tt><big>(</big><em>target</em>, <em>transformation=None</em><big>)</big><a class="headerlink" href="#irtk.Image.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform image registration.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.resample">
+<tt class="descname">resample</tt><big>(</big><em>pixelSize=[1, 1, 1], interpolation='linear', gaussian_parameter=1.0, labels=False, label_smoothing=3.0</em><big>)</big><a class="headerlink" href="#irtk.Image.resample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resample.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.resample2D">
+<tt class="descname">resample2D</tt><big>(</big><em>pixelSize=[1, 1], interpolation='linear', gaussian_parameter=1.0</em><big>)</big><a class="headerlink" href="#irtk.Image.resample2D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resample 2D slices.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.rescale">
+<tt class="descname">rescale</tt><big>(</big><em>min=0</em>, <em>max=255</em>, <em>nonzero=False</em><big>)</big><a class="headerlink" href="#irtk.Image.rescale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stretch contrast.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.reset_header">
+<tt class="descname">reset_header</tt><big>(</big><em>header=None</em><big>)</big><a class="headerlink" href="#irtk.Image.reset_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset header.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.resize">
+<tt class="descname">resize</tt><big>(</big><em>shape</em>, <em>interpolation='linear'</em><big>)</big><a class="headerlink" href="#irtk.Image.resize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resize image with an affine transformation to force it to a given shape.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.saturate">
+<tt class="descname">saturate</tt><big>(</big><em>q0=1.0</em>, <em>q1=99.0</em>, <em>nonzero=False</em><big>)</big><a class="headerlink" href="#irtk.Image.saturate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saturate pixel intensities using numpy.percentile.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.set_header">
+<tt class="descname">set_header</tt><big>(</big><em>new_header</em><big>)</big><a class="headerlink" href="#irtk.Image.set_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the headers from a new dict.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.thumbnail">
+<tt class="descname">thumbnail</tt><big>(</big><em>seg=None</em>, <em>overlay=None</em>, <em>colors=None</em>, <em>opacity=0.5</em>, <em>step=2</em>, <em>unroll=False</em>, <em>index=None</em><big>)</big><a class="headerlink" href="#irtk.Image.thumbnail" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a thumbnail.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.Image.transform">
+<tt class="descname">transform</tt><big>(</big><em>transformation=None</em>, <em>target=None</em>, <em>interpolation='linear'</em>, <em>gaussian_parameter=1.0</em>, <em>labels=False</em>, <em>label_smoothing=3.0</em><big>)</big><a class="headerlink" href="#irtk.Image.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform image.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.imread">
+<tt class="descclassname">irtk.</tt><tt class="descname">imread</tt><big>(</big><em>filename</em>, <em>dtype=None</em>, <em>empty=False</em>, <em>force_neurological=True</em><big>)</big><a class="headerlink" href="#irtk.imread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads an image in a format understandable by IRTK.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filename</strong> : str</p>
+<blockquote>
+<div><p>Name of the file to read.</p>
+</div></blockquote>
+<p><strong>dtype</strong> : str, optional (default: None)</p>
+<blockquote>
+<div><p>Pixel type of the output image. If dtype is None, then the pixel type
+that has been used to write the file to disk is selected. Note that for the
+slope/intercept information to be taken into account in NIFTI files.
+If an integer type is requested and slope is not 1 or intercept not 0,
+then the following message will be printed on stderr:</p>
+<p><tt class="docutils literal"><span class="pre">irtkGenericImage&lt;float&gt;::Read:</span> <span class="pre">Ignore</span> <span class="pre">slope</span> <span class="pre">and</span> <span class="pre">intercept,</span> <span class="pre">use</span> <span class="pre">irtkGenericImage&lt;float&gt;</span> <span class="pre">or</span>
+<span class="pre">irtkGenericImage&lt;double&gt;</span> <span class="pre">instead</span></tt></p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>img</strong> : irtk.Image</p>
+<blockquote class="last">
+<div><p>A subclass of numpy.ndarray holding the information from the NIFTI headers.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">irtk</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span> <span class="s">&quot;input.nii&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s">&quot;float32&quot;</span> <span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">img</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+<span class="go">Image data:</span>
+<span class="go">array([[[ 455.95440674,  452.3605957 ],</span>
+<span class="go">        [ 424.96868896,  419.69546509]],</span>
+
+<span class="go">       [[ 462.80618286,  477.69018555],</span>
+<span class="go">        [ 433.81433105,  455.43170166]]], dtype=float32)</span>
+
+<span class="go">Image shape: (2, 2, 2)</span>
+
+<span class="go">Header:</span>
+<span class="go">{   &#39;dim&#39;: array([2, 2, 2, 1], dtype=int32),</span>
+<span class="go">    &#39;orientation&#39;: array([[ 0.18479464, -0.98071011,  0.06370761],</span>
+<span class="go">                          [ 0.34170858,  0.12489687,  0.93146984],</span>
+<span class="go">                          [ 0.92145872,  0.15036121, -0.35819733]]),</span>
+<span class="go">    &#39;origin&#39;: array([  6.61570985,  35.65394667, -74.69886408,   0.        ]),</span>
+<span class="go">    &#39;pixelSize&#39;: array([ 0.75,  0.75,  0.75,  1.  ])}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.imwrite">
+<tt class="descclassname">irtk.</tt><tt class="descname">imwrite</tt><big>(</big><em>filename</em>, <em>img</em><big>)</big><a class="headerlink" href="#irtk.imwrite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write image.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.imshow">
+<tt class="descclassname">irtk.</tt><tt class="descname">imshow</tt><big>(</big><em>img</em>, <em>seg=None</em>, <em>overlay=None</em>, <em>colors=None</em>, <em>opacity=0.5</em>, <em>filename=None</em>, <em>unroll=False</em>, <em>index=None</em><big>)</big><a class="headerlink" href="#irtk.imshow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display a 2D image</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.viewer">
+<tt class="descclassname">irtk.</tt><tt class="descname">viewer</tt><big>(</big><em>img</em>, <em>seg=None</em>, <em>overlay=None</em>, <em>colors=None</em>, <em>opacity=0.5</em>, <em>index=None</em><big>)</big><a class="headerlink" href="#irtk.viewer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inline viewer for IPython Notebook</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.zeros">
+<tt class="descclassname">irtk.</tt><tt class="descname">zeros</tt><big>(</big><em>header</em>, <em>dtype='float32'</em><big>)</big><a class="headerlink" href="#irtk.zeros" title="Permalink to this definition">¶</a></dt>
+<dd><p>Similar to numpy.zeros, but with given headers.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.ones">
+<tt class="descclassname">irtk.</tt><tt class="descname">ones</tt><big>(</big><em>header</em>, <em>dtype='float32'</em><big>)</big><a class="headerlink" href="#irtk.ones" title="Permalink to this definition">¶</a></dt>
+<dd><p>Similar to numpy.ones, but with given headers.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.new_header">
+<tt class="descclassname">irtk.</tt><tt class="descname">new_header</tt><big>(</big><em>pixelSize=[1, 1, 1, 1], orientation=None, origin=[0, 0, 0, 0], dim=None</em><big>)</big><a class="headerlink" href="#irtk.new_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create new header.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.PointsToImage">
+<tt class="descclassname">irtk.</tt><tt class="descname">PointsToImage</tt><big>(</big><em>pts</em>, <em>header</em><big>)</big><a class="headerlink" href="#irtk.PointsToImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an image from a set of 3D points.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.drawSphere">
+<tt class="descclassname">irtk.</tt><tt class="descname">drawSphere</tt><big>(</big><em>img</em>, <em>(x</em>, <em>y</em>, <em>z)</em>, <em>rx</em>, <em>ry=None</em>, <em>rz=None</em><big>)</big><a class="headerlink" href="#irtk.drawSphere" title="Permalink to this definition">¶</a></dt>
+<dd><p>Draw a sphere in a given image.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.sphere">
+<tt class="descclassname">irtk.</tt><tt class="descname">sphere</tt><big>(</big><em>(x</em>, <em>y</em>, <em>z)</em>, <em>r</em>, <em>header</em><big>)</big><a class="headerlink" href="#irtk.sphere" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an image with a filled sphere.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.crf">
+<tt class="descclassname">irtk.</tt><tt class="descname">crf</tt><big>(</big><em>img</em>, <em>labels</em>, <em>proba</em>, <em>l=1.0</em>, <em>sigma=0.0</em>, <em>sigmaZ=0.0</em><big>)</big><a class="headerlink" href="#irtk.crf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Conditional Random Field.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.graphcut">
+<tt class="descclassname">irtk.</tt><tt class="descname">graphcut</tt><big>(</big><em>img</em>, <em>labels</em>, <em>l=1.0</em>, <em>sigma=0.0</em>, <em>sigmaZ=0.0</em><big>)</big><a class="headerlink" href="#irtk.graphcut" title="Permalink to this definition">¶</a></dt>
+<dd><p>Graphcut.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.largest_connected_component">
+<tt class="descclassname">irtk.</tt><tt class="descname">largest_connected_component</tt><big>(</big><em>img</em>, <em>fill_holes=False</em><big>)</big><a class="headerlink" href="#irtk.largest_connected_component" title="Permalink to this definition">¶</a></dt>
+<dd><p>Largest connected component</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.landmarks_to_spheres">
+<tt class="descclassname">irtk.</tt><tt class="descname">landmarks_to_spheres</tt><big>(</big><em>seg</em>, <em>r=10</em><big>)</big><a class="headerlink" href="#irtk.landmarks_to_spheres" title="Permalink to this definition">¶</a></dt>
+<dd><p>Landmarks to spheres</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="irtk.RigidTransformation">
+<em class="property">class </em><tt class="descclassname">irtk.</tt><tt class="descname">RigidTransformation</tt><big>(</big><em>filename=None</em>, <em>matrix=None</em>, <em>tx=0</em>, <em>ty=0</em>, <em>tz=0</em>, <em>rx=0</em>, <em>ry=0</em>, <em>rz=0</em><big>)</big><a class="headerlink" href="#irtk.RigidTransformation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rigid transformation class.</p>
+<dl class="method">
+<dt id="irtk.RigidTransformation.apply">
+<tt class="descname">apply</tt><big>(</big><em>img</em>, <em>target_header=None</em>, <em>interpolation='linear'</em>, <em>gaussian_parameter=1.0</em><big>)</big><a class="headerlink" href="#irtk.RigidTransformation.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.RigidTransformation.get_parameters">
+<tt class="descname">get_parameters</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.RigidTransformation.get_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.RigidTransformation.invert">
+<tt class="descname">invert</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.RigidTransformation.invert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invert.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.RigidTransformation.matrix">
+<tt class="descname">matrix</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.RigidTransformation.matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return matrix.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.RigidTransformation.write">
+<tt class="descname">write</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#irtk.RigidTransformation.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save to disk.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="irtk.AffineTransformation">
+<em class="property">class </em><tt class="descclassname">irtk.</tt><tt class="descname">AffineTransformation</tt><big>(</big><em>filename=None</em>, <em>matrix=None</em>, <em>tx=0</em>, <em>ty=0</em>, <em>tz=0</em>, <em>rx=0</em>, <em>ry=0</em>, <em>rz=0</em>, <em>sx=0</em>, <em>sy=0</em>, <em>sz=0</em>, <em>sxy=0</em>, <em>syz=0</em>, <em>sxz=0</em><big>)</big><a class="headerlink" href="#irtk.AffineTransformation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Affine transformation class.</p>
+<dl class="method">
+<dt id="irtk.AffineTransformation.apply">
+<tt class="descname">apply</tt><big>(</big><em>img</em>, <em>target_header=None</em>, <em>interpolation='linear'</em>, <em>gaussian_parameter=1.0</em><big>)</big><a class="headerlink" href="#irtk.AffineTransformation.apply" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.AffineTransformation.get_parameters">
+<tt class="descname">get_parameters</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.AffineTransformation.get_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.AffineTransformation.invert">
+<tt class="descname">invert</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.AffineTransformation.invert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Invert.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.AffineTransformation.matrix">
+<tt class="descname">matrix</tt><big>(</big><big>)</big><a class="headerlink" href="#irtk.AffineTransformation.matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return matrix.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="irtk.AffineTransformation.write">
+<tt class="descname">write</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#irtk.AffineTransformation.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save to disk.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.read_points">
+<tt class="descclassname">irtk.</tt><tt class="descname">read_points</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#irtk.read_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read points from file.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.registration_rigid_points">
+<tt class="descclassname">irtk.</tt><tt class="descname">registration_rigid_points</tt><big>(</big><em>source</em>, <em>target</em>, <em>rms=False</em><big>)</big><a class="headerlink" href="#irtk.registration_rigid_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Point registration.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.registration_affine_points">
+<tt class="descclassname">irtk.</tt><tt class="descname">registration_affine_points</tt><big>(</big><em>source</em>, <em>target</em>, <em>rms=False</em><big>)</big><a class="headerlink" href="#irtk.registration_affine_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Point registration.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.flirt2dof">
+<tt class="descclassname">irtk.</tt><tt class="descname">flirt2dof</tt><big>(</big><em>flirt_matrix</em>, <em>image_target</em>, <em>image_source</em>, <em>return_matrix=False</em><big>)</big><a class="headerlink" href="#irtk.flirt2dof" title="Permalink to this definition">¶</a></dt>
+<dd><p>BUG? <a class="reference external" href="https://gitlab.doc.ic.ac.uk/sk1712/irtk/commit/343536a64678ba4edaf926b235a5a29a99b90392?view=parallel">https://gitlab.doc.ic.ac.uk/sk1712/irtk/commit/343536a64678ba4edaf926b235a5a29a99b90392?view=parallel</a></p>
+<p>See fsl/src/newimage/newimagefns.cc : raw_affine_transform()</p>
+<p>flirt_matrix = np.loadtxt(r)
+<a class="reference external" href="https://gitlab.doc.ic.ac.uk/sk1712/irtk/blob/develop/packages/applications/flirt2dof.cc">https://gitlab.doc.ic.ac.uk/sk1712/irtk/blob/develop/packages/applications/flirt2dof.cc</a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="irtk.Cmd">
+<em class="property">class </em><tt class="descclassname">irtk.</tt><tt class="descname">Cmd</tt><big>(</big><em>program</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#irtk.Cmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generic wrapper for command line applications using medical images.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="irtk.disk">
+<tt class="descclassname">irtk.</tt><tt class="descname">disk</tt><big>(</big><em>r</em><big>)</big><a class="headerlink" href="#irtk.disk" title="Permalink to this definition">¶</a></dt>
+<dd><p>2D disk for morphological operations.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">irtk Python documentation</a></li>
+<li><a class="reference internal" href="#module-reference">Module reference</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="why.html"
+                        title="next chapter">Why Python?</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="why.html" title="Why Python?"
+             >next</a> |</li>
+        <li><a href="#">irtk 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Kevin Keraudren.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>
