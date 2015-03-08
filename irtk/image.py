@@ -1,18 +1,5 @@
 from __future__ import division
 
-# iPython tricks:
-# # automatically reload modified modules:
-# %load_ext autoreload
-# %autoreload 2
-
-# Using Notebook:
-# ipython notebook --pylab inline
-
-# Using Qtconsole:
-# ipython qtconsole --pylab=inline
-
-
-
 __all__ = [ "Image",
             "imread",
             "imwrite",
@@ -20,8 +7,6 @@ __all__ = [ "Image",
             "viewer",
             "zeros",
             "ones",
-            "rview",
-            "display",
             "new_header",
             "PointsToImage",
             "drawSphere",
@@ -36,8 +21,8 @@ import numpy as np
 import pprint
 import copy
 import subprocess
+import os
 
-from scipy.stats.mstats import mquantiles
 import scipy.ndimage as nd
 from scipy import misc
 from skimage import morphology
@@ -52,15 +37,6 @@ from IPython.html import widgets
 from io import BytesIO
 from PIL.Image import fromarray
 
-import tempfile
-import os
-
-garbage = []
-import atexit
-def _cleanup():
-    for f in garbage:
-        os.remove(f)
-atexit.register(_cleanup)
 
 def new_header( pixelSize=[1,1,1,1],
                 orientation=None,
@@ -364,22 +340,23 @@ class Image(np.ndarray):
             
         return data
 
-    def copy( self, dtype=None ):       
+    def copy( self, dtype=None ):
+        """Returns a deep copy of the object."""
         return Image( self.get_data(dtype), self.get_header(), squeeze=False )
 
-    def saturate( self, q0=0.01, q1=0.99, nonzero=False ):
+    def saturate( self, q0=1.0, q1=99.0, nonzero=False ):
         """
-        Saturate pixel intensities.
+        Saturate pixel intensities using numpy.percentile.
         """
         data = self.get_data('float32')
         if q0 is None:
-            q0 = 0
+            q0 = 0.0
         if q1 is None:
-            q1 = 1
+            q1 = 100.0
         if nonzero:
-            q = mquantiles(data[np.nonzero(data)],[q0,q1])
+            q = np.percentile(data[np.nonzero(data)],[q0,q1])
         else:
-            q = mquantiles(data.flatten(),[q0,q1])
+            q = np.percentile(data.flatten(),[q0,q1])
         data[data<q[0]] = q[0]
         data[data>q[1]] = q[1]
         return Image( data, self.header )
@@ -815,6 +792,7 @@ class Image(np.ndarray):
         return self.transform( target=target, interpolation=interpolation )
 
     def as3D( self ):
+        """Force 3D shape"""
         if len(self.shape) == 2:
             self = Image( self[np.newaxis,...].copy(),
                           self.get_header(),
@@ -822,6 +800,7 @@ class Image(np.ndarray):
         return self
 
     def as4D( self ):
+        """Force 4D shape"""
         if len(self.shape) == 2:
                 self = Image( self[np.newaxis,np.newaxis,...].copy(),
                               self.get_header(),
@@ -954,60 +933,7 @@ def ones( header, dtype='float32' ):
     """
     Similar to numpy.ones, but with given headers.
     """
-    return Image( np.ones( header['dim'][::-1], dtype=dtype ), header )
-
-def rview( img, seg=None, overlay=None, colors=None, binary="rview" ):
-    """
-    Launches rview.
-    """
-    if isinstance( img, Image ):
-        if overlay is not None and seg is not None:
-            print "You cannot specify both seg and overlay"
-            return
-        if overlay is not None and colors is None:
-            colors = 'jet' # default colormap
-        if colors is not None and overlay is None:
-            overlay = img.rescale() # we want to see img in colors
-            img = zeros(img.get_header(), dtype='int16')
-        if isinstance( colors, str ):
-            colors = utils.get_colormap( colors )
-        if seg is not None and colors is None:
-            colors = utils.random_colormap(seg.max())
-
-        # now, seg == overlay
-        if overlay is not None:
-            seg = overlay
-
-        if seg is not None and not isinstance(seg, Image):
-            seg = Image( seg, img.get_header() )
-    
-        handle,filename = tempfile.mkstemp(suffix=".nii")
-        garbage.append(filename)
-        imwrite( filename, img.astype('int16') ) # rview reads in "short" anyway
-        args = [ binary, filename ]
-        if seg is not None:
-            handle,seg_filename = tempfile.mkstemp(suffix=".nii")
-            garbage.append(seg_filename)
-            handle,colors_filename = tempfile.mkstemp(suffix=".txt")
-            garbage.append(colors_filename)
-            imwrite( seg_filename, seg.astype('int16') )
-            args.extend( ["-seg", seg_filename])
-            utils.colormap( colors, colors_filename )
-            args.extend( ["-lut", colors_filename])
-        if overlay is not None:
-            args.append("-labels")
-
-    # launch rview as an independant process
-    subprocess.Popen( args )
-
-def display( img, seg=None, overlay=None, colors=None ):
-    """
-    Launches display.
-    """
-    rview(img, seg, overlay, colors, binary="display")
-
-
-    
+    return Image( np.ones( header['dim'][::-1], dtype=dtype ), header ) 
 
 def write_list( img_list ):
     n = len(img_list)
@@ -1171,6 +1097,7 @@ def viewer( img,
             colors=None,
             opacity=0.5,
             index=None ):
+    """Inline viewer for IPython Notebook""" 
 
     def f(z,y,x):
         IPython.display.display( imshow(img,seg,overlay,colors,opacity,index=(z,y,x)))
@@ -1212,6 +1139,7 @@ def graphcut( img, labels, l=1.0, sigma=0.0, sigmaZ=0.0 ):
     return Image(new_labels, header)
     
 def largest_connected_component( img, fill_holes=False ):
+    """Largest connected component"""
     labels, nb_labels = nd.label(img>0)
     res = img.copy()
     if nb_labels > 1:
@@ -1227,19 +1155,19 @@ def largest_connected_component( img, fill_holes=False ):
     return res
     
 def landmarks_to_spheres(seg, r=10):
-    nb_landmarks = seg.max()
+    """Landmarks to spheres"""
+    nb_landmarks = np.unique(seg)[1:]
     centers = []
-    for l in range(1,nb_landmarks+1):
+    for l in nb_landmarks:
         centers.append( nd.center_of_mass( (seg == l).view(np.ndarray) ) )
     centers= np.array(centers)[:,::-1]
     centers = seg.ImageToWorld(centers)
 
     res = zeros( seg.get_header(), dtype='uint8' )
     ball = Image( morphology.ball(r) )
-    ball.header['pixelSize'][:3] = res.header['pixelSize']
 
-    for l in range(1,nb_landmarks+1):
-        ball.header['origin'] = centers[l-1]
+    for c,l in zip(centers,nb_landmarks):
+        ball.header['origin'] = c
         ball2 = ball.transform(target=res)
         res[ball2>0] = l
         
