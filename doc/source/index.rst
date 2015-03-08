@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-irtk Python documentation
+python-irtk documentation
 =========================
 
 The aim of this module is to provide a simple and pythonic interface to IRTK

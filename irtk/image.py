@@ -814,7 +814,7 @@ class Image(np.ndarray):
 def imread( filename,
             dtype=None,
             empty=False,
-            force_neurological=True ):
+            force_neurological=False ):
     """
     Reads an image in a format understandable by IRTK.
 
@@ -832,12 +832,39 @@ def imread( filename,
         ``irtkGenericImage<float>::Read: Ignore slope and intercept, use irtkGenericImage<float> or
         irtkGenericImage<double> instead``
 
+    force_neurological : bool, optional (default: False)
+        Forces the image to be read with the neurological convention. See the
+        notes on neurological/radiological convention for more details.
+
         
     Returns
     -------
     img : irtk.Image
         A subclass of numpy.ndarray holding the information from the NIFTI headers.
 
+    Notes
+    -----
+
+    Note on neurological/radiological order:
+
+    In neurological order, the determinant of the ImageToWorld matrix has a positive
+    determinant: the image is thus represented in a direct orthonormal system, you
+    are positioning yourself in the shoes of the patient, the right of the patient
+    is at the right of the image. 
+
+    In radiological order, the determinant of the ImageToWorld matrix has a negative
+    determinant: the image is thus represented in a indirect orthonormal system, you
+    are looking at a patient which is looking at you, as in a mirror, the right of
+    the patient is at the left of the image. 
+
+    To go from radiological to neurological, you need to mirror the pixel data along
+    the X axis as well as multiply the X axis by -1 in the header information. It is
+    only the combination of the two operations that ensure that the information
+    contained in the image is still the same. This is valid for IRTK which places
+    the image origin at the center of the image, but an additional offset should be
+    taken into account if the origin of the image is defined differently (for
+    instance position [0,0,0] in the array of pixels).
+        
     Examples
     --------
     >>> img = irtk.imread( "input.nii", dtype="float32" )
