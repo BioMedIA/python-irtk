@@ -4,7 +4,7 @@ __all__ = [ "Image",
             "imread",
             "imwrite",
             "imshow",
-            "viewer",
+#            "viewer",
             "zeros",
             "ones",
             "new_header",
@@ -32,8 +32,8 @@ import registration
 import utils
 
 import IPython.display
-from IPython.html.widgets import interact
-from IPython.html import widgets
+#from IPython.html.widgets import interact
+#from IPython.html import widgets
 from io import BytesIO
 from PIL.Image import fromarray
 
@@ -1118,24 +1118,24 @@ def imshow( img,
         else:
             return False
 
-def viewer( img,
-            seg=None,
-            overlay=None,
-            colors=None,
-            opacity=0.5,
-            index=None ):
-    """Inline viewer for IPython Notebook""" 
-
-    def f(z,y,x):
-        IPython.display.display( imshow(img,seg,overlay,colors,opacity,index=(z,y,x)))
-
-    if index is None:
-        index = (np.array(img.shape)/2).astype('int')
-        
-    interact( f,
-              z=widgets.IntSliderWidget(min=0,max=img.shape[0]-1,step=1,value=index[0]),
-              y=widgets.IntSliderWidget(min=0,max=img.shape[1]-1,step=1,value=index[1]),
-              x=widgets.IntSliderWidget(min=0,max=img.shape[2]-1,step=1,value=index[2]))
+#def viewer( img,
+#            seg=None,
+#            overlay=None,
+#            colors=None,
+#            opacity=0.5,
+#            index=None ):
+#    """Inline viewer for IPython Notebook""" 
+#
+#    def f(z,y,x):
+#        IPython.display.display( imshow(img,seg,overlay,colors,opacity,index=(z,y,x)))
+#
+#    if index is None:
+#        index = (np.array(img.shape)/2).astype('int')
+#        
+#    interact( f,
+#              z=widgets.IntSliderWidget(min=0,max=img.shape[0]-1,step=1,value=index[0]),
+#              y=widgets.IntSliderWidget(min=0,max=img.shape[1]-1,step=1,value=index[1]),
+#              x=widgets.IntSliderWidget(min=0,max=img.shape[2]-1,step=1,value=index[2]))
     
 def crf( img, labels, proba, l=1.0, sigma=0.0, sigmaZ=0.0 ):
     """

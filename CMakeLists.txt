@@ -8,6 +8,8 @@ cmake_minimum_required(VERSION 2.6)
 find_package(IRTK REQUIRED)
 INCLUDE_DIRECTORIES(${IRTK_INCLUDE_DIRS})
 LINK_DIRECTORIES(${IRTK_LIBRARIES_DIR})
+LINK_DIRECTORIES(/Users/kevin/anaconda/envs/_build_placehold_placehold_placehold_placehold_placeh/lib)
+LINK_DIRECTORIES(/Users/kevin/anaconda/envs/_build/lib/)
 # SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 # SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
@@ -16,6 +18,11 @@ ADD_DEFINITIONS(-DHAS_TBB)
 INCLUDE_DIRECTORIES(${TBB_INCLUDE_DIRS})
 # LINK_DIRECTORIES(${TBB_LIBRARY_DIRS})
 #LINK_LIBRARIES(${TBB_LIBRARIES})
+
+# VTK
+find_package(VTK 6.0 REQUIRED NO_MODULE)
+include(${VTK_USE_FILE})
+include_directories(${VTK_INCLUDE_DIRS})
 
 find_package(PythonLibs REQUIRED)
 if(USE_PYTHONLIBS_FILE)
@@ -91,7 +98,7 @@ endif(CYTHON_ERR)
 set(CPP_SRCS ${CPP_SRCS} ${CMAKE_BINARY_DIR}/tmp/_irtk.cpp)
   
 add_library( "_irtk" MODULE ${CPP_SRCS})
-target_link_libraries( "_irtk" ${IRTK_LIBRARIES} ${PYTHON_LIBRARY} ${IRTK_LIBRARIES} ${PNG_LIBRARY} znz)
+target_link_libraries( "_irtk" ${IRTK_LIBRARIES} ${PYTHON_LIBRARY} ${IRTK_LIBRARIES} ${PNG_LIBRARY} znz png)
 set_target_properties("_irtk" PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/irtk)
 
 # copy all python files

@@ -33,8 +33,7 @@ void voxellise( vtkPolyData *poly, // input mesh (must be closed)
     origin[1] = 0;
     origin[2] = 0;
     whiteImage->SetOrigin(origin);
-    whiteImage->SetScalarTypeToUnsignedChar();
-    whiteImage->AllocateScalars();
+    whiteImage->AllocateScalars(VTK_UNSIGNED_CHAR,1);
 
     for ( int i = 0; i < whiteImage->GetNumberOfPoints(); i++ )
         whiteImage->GetPointData()->GetScalars()->SetTuple1(i, value);  
@@ -42,7 +41,7 @@ void voxellise( vtkPolyData *poly, // input mesh (must be closed)
     // polygonal data --> image stencil:
     vtkSmartPointer<vtkPolyDataToImageStencil> pol2stenc = 
         vtkSmartPointer<vtkPolyDataToImageStencil>::New();
-    pol2stenc->SetInput( poly );
+    pol2stenc->SetInputData( poly );
     pol2stenc->SetOutputOrigin(origin);
     pol2stenc->SetOutputSpacing(spacing);
     pol2stenc->SetTolerance(0.0);
@@ -52,8 +51,8 @@ void voxellise( vtkPolyData *poly, // input mesh (must be closed)
     // cut the corresponding white image and set the background:
     vtkSmartPointer<vtkImageStencil> imgstenc = 
         vtkSmartPointer<vtkImageStencil>::New();
-    imgstenc->SetInput(whiteImage);
-    imgstenc->SetStencil(pol2stenc->GetOutput());
+    imgstenc->SetInputData(whiteImage);
+    imgstenc->SetStencilData(pol2stenc->GetOutput());
     imgstenc->ReverseStencilOff();
     imgstenc->SetBackgroundValue(0);
     imgstenc->Update();
@@ -62,7 +61,6 @@ void voxellise( vtkPolyData *poly, // input mesh (must be closed)
         vtkSmartPointer<vtkImageData>::New();
     vtkimageOut = imgstenc->GetOutput();
     vtkimageOut->Modified();
-    vtkimageOut->Update();
 
     // Retrieve the output in IRTK
     int n    = image.GetNumberOfVoxels();
@@ -102,7 +100,6 @@ void create_polydata( double* points,
 
     poly->SetPoints(vtk_points);
     poly->SetPolys(vtk_triangles);
-    poly->Update();
 }
 
 
@@ -135,7 +132,7 @@ void _voxellise( double* points,
     vtkSmartPointer<vtkPolyDataWriter> writer =  
         vtkSmartPointer<vtkPolyDataWriter>::New();
     writer->SetFileName("debug.vtk");
-    writer->SetInput(poly);
+    writer->SetInputData(poly);
     writer->Write();
 
     irtkGenericImage<uchar> irtk_image;
@@ -195,7 +192,6 @@ void _shrinkDisk( uchar* img,
     vtkSmartPointer<vtkPolyData> poly = vtkSmartPointer<vtkPolyData>::New();
     poly->SetPoints(vtk_points);
     poly->SetVerts(vtk_verts);
-    poly->Update();
 
     // Create a circle
     vtkSmartPointer<vtkRegularPolygonSource> circle =
@@ -211,7 +207,7 @@ void _shrinkDisk( uchar* img,
     vtkSmartPointer<vtkSmoothPolyDataFilter> smoothFilter =
         vtkSmartPointer<vtkSmoothPolyDataFilter>::New();
     smoothFilter->SetInputConnection( circle->GetOutputPort() );
-    smoothFilter->SetSource( poly );
+    smoothFilter->SetSourceData( poly );
     //smoothFilter->SetNumberOfIterations(10);
     smoothFilter->SetEdgeAngle( 180.0 );
     smoothFilter->FeatureEdgeSmoothingOn();
@@ -292,7 +288,6 @@ void _shrinkSphere( double* points,
     vtkSmartPointer<vtkPolyData> poly = vtkSmartPointer<vtkPolyData>::New();
     poly->SetPoints(vtk_points);
     poly->SetPolys(vtk_vertices);
-    poly->Update();
     
     vtkSmartPointer<vtkSphereSource> sphere =
         vtkSmartPointer<vtkSphereSource>::New();
@@ -300,12 +295,11 @@ void _shrinkSphere( double* points,
     sphere->SetRadius(r);
     sphere->SetPhiResolution(100);
     sphere->SetThetaResolution(100);
-    sphere->Update();
     
     vtkSmartPointer<vtkSmoothPolyDataFilter> smoothFilter = 
         vtkSmartPointer<vtkSmoothPolyDataFilter>::New();
     smoothFilter->SetInputConnection(0, sphere->GetOutputPort());
-    smoothFilter->SetInput(1, poly);
+    smoothFilter->SetInputData(1, poly);
     smoothFilter->Update();
 
     poly = smoothFilter->GetOutput();
